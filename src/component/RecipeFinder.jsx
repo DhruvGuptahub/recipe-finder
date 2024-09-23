@@ -1,11 +1,15 @@
 import React, { useState } from 'react'
 import axios from 'axios'
+import RecipeCard from './RecipeCard'
+import Filters from './Filter'
+import '../App.css'
 
 function RecipeFinder() {
     const [query, setQuery] = useState('')
     const [recipes, setRecipes] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
+    const [filters, setFilters] = useState({ cuisine: '', diet: '' })
 
     const API_KEY = 'abfda5402f214aeab31fae262224f1c1'
 
@@ -13,30 +17,38 @@ function RecipeFinder() {
         setQuery(e.target.value)
     }
 
-    const searchRecipes = async () => {
+    const handleFilterChange = (filterName, value) => {
+        setFilters(prevFilters => ({ ...prevFilters, [filterName]: value }))
+    }
+
+    const fetchRecipes = async () => {
         if (query.trim() === '') {
             alert('Please enter an ingredient or dish name')
             return
         }
 
+        const cuisine = Filters.cuisine ? `&cuisine=${Filters.cuisine}` : ''
+        const diet = Filters.diet ? `&diet=${Filters.diet}` : ''
+
         setLoading(true)
         setError(null)
 
         try {
-            const response = await axios.get(`https://api.spoonacular.com/recipes/findByIngredients?ingredients=${query}&number=10&apiKey=${API_KEY}`
+            const response = await axios.get(`https://api.spoonacular.com/recipes/complexSearch?query=${query
+                }${cuisine}${diet}&number=10&apiKey=${API_KEY}`
             )
-            setRecipes(response.data)
+            setRecipes(response.data.results)
         }
-        catch (error) {
+        catch (err) {
             setError('Error fetching recipes. Please try again.')
+        } finally {
+            setLoading(false)
         }
-
-        setLoading(false)
     }
 
     const handleSubmit = (e) => {
         e.preventDefault()
-        searchRecipes()
+        fetchRecipes()
     }
 
     return (
@@ -47,17 +59,15 @@ function RecipeFinder() {
                 <input type="text" value={query} onChange={handleInputChange} placeholder='Search by ingredient or dish name' />
                 <button type='submit'>Search</button>
             </form>
+            <Filters onFilterChange={handleFilterChange} />
 
-            {loading && <p>Loading Recipes...</p>}
+            {loading && <div className='loading'>Loading...</div>}
 
             {error && <p>{error}</p>}
 
             <div className='recipes'>
                 {recipes.map((recipe) => (
-                    <div key={recipe.id} className='recipe-card'>
-                        <img src={recipe.image} alt='recipe.title'></img>
-                        <h3>{recipe.title}</h3>
-                    </div>
+                    <RecipeCard key={recipe.id} recipe={recipe} />
                 ))
                 }
             </div>
